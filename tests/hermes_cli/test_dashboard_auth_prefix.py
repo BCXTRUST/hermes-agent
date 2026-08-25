@@ -278,8 +278,14 @@ class TestPublicUrlOverride:
 
     Precedence (mirrors ``client_id``):
 
-        env (non-empty) > config.yaml > reconstructed from request
+        env (non-empty) > config.yaml > PaaS public domain > reconstructed
+        from request
     """
+
+    @pytest.fixture(autouse=True)
+    def _clear_paas_public_domains(self, monkeypatch):
+        monkeypatch.delenv("RAILWAY_PUBLIC_DOMAIN", raising=False)
+        monkeypatch.delenv("RAILWAY_STATIC_URL", raising=False)
 
     @pytest.fixture
     def patch_config(self, monkeypatch):
@@ -392,7 +398,52 @@ class TestPublicUrlOverride:
             for m in warnings
         ), f"expected a scheme warning, got: {warnings!r}"
 
+    def test_railway_public_domain_fills_in_when_operator_url_unset(
+        self, patch_config, monkeypatch,
+    ):
+        """Railway injects a hostname-only RAILWAY_PUBLIC_DOMAIN. When the
+        operator did not set HERMES_DASHBOARD_PUBLIC_URL, OAuth callbacks
+        must still be https://<that-host> rather than whatever Host the
+        proxy forwarded (often http)."""
+        patch_config(None)
+        monkeypatch.delenv("HERMES_DASHBOARD_PUBLIC_URL", raising=False)
+        monkeypatch.setenv("RAILWAY_PUBLIC_DOMAIN", "hermes-prod.up.railway.app")
 
+        assert prefix_mod.resolve_public_url() == (
+            "https://hermes-prod.up.railway.app"
+        )
+
+    def test_explicit_public_url_wins_over_railway_domain(
+        self, patch_config, monkeypatch,
+    ):
+        patch_config(None)
+        monkeypatch.setenv(
+            "HERMES_DASHBOARD_PUBLIC_URL", "https://hermes.example.com",
+        )
+        monkeypatch.setenv("RAILWAY_PUBLIC_DOMAIN", "hermes-prod.up.railway.app")
+
+        assert prefix_mod.resolve_public_url() == "https://hermes.example.com"
+
+    def test_config_public_url_wins_over_railway_domain(
+        self, patch_config, monkeypatch,
+    ):
+        patch_config("https://from-config.example")
+        monkeypatch.delenv("HERMES_DASHBOARD_PUBLIC_URL", raising=False)
+        monkeypatch.setenv("RAILWAY_PUBLIC_DOMAIN", "hermes-prod.up.railway.app")
+
+        assert prefix_mod.resolve_public_url() == "https://from-config.example"
+
+    def test_railway_static_url_already_absolute(
+        self, patch_config, monkeypatch,
+    ):
+        patch_config(None)
+        monkeypatch.delenv("HERMES_DASHBOARD_PUBLIC_URL", raising=False)
+        monkeypatch.delenv("RAILWAY_PUBLIC_DOMAIN", raising=False)
+        monkeypatch.setenv(
+            "RAILWAY_STATIC_URL", "https://legacy.up.railway.app",
+        )
+
+        assert prefix_mod.resolve_public_url() == "https://legacy.up.railway.app"
 
 
 # ---------------------------------------------------------------------------

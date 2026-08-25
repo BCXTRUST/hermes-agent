@@ -203,6 +203,26 @@ def _load_dashboard_section() -> dict:
     return section if isinstance(section, dict) else {}
 
 
+def _platform_inferred_public_url() -> str:
+    """HTTPS public URL inferred from well-known PaaS domain env vars.
+
+    Used only when the operator did not set ``HERMES_DASHBOARD_PUBLIC_URL``
+    or ``dashboard.public_url``. Railway injects ``RAILWAY_PUBLIC_DOMAIN``
+    (hostname only) and sometimes ``RAILWAY_STATIC_URL`` (legacy; may already
+    include a scheme). Reconstructing the OAuth callback from inbound Host
+    headers behind Railway's proxy can yield ``http://`` and break login.
+    """
+    raw = (
+        os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
+        or os.environ.get("RAILWAY_STATIC_URL", "")
+    ).strip()
+    if not raw:
+        return ""
+    if "://" in raw:
+        return _normalise_public_url(raw)
+    return _normalise_public_url(f"https://{raw}")
+
+
 def resolve_public_url() -> str:
     """Resolve the operator-declared dashboard public URL.
 
@@ -212,13 +232,16 @@ def resolve_public_url() -> str:
          strip — empty values are treated as unset so a provisioned-but-
          not-populated Fly secret can't shadow a valid config.yaml entry).
       2. ``dashboard.public_url`` in ``config.yaml``.
-      3. Empty string — signals "no override, reconstruct from request"
+      3. Platform-injected public domain (currently Railway's
+         ``RAILWAY_PUBLIC_DOMAIN`` / ``RAILWAY_STATIC_URL``).
+      4. Empty string — signals "no override, reconstruct from request"
          to the caller.
 
     Each candidate value is run through :func:`_normalise_public_url`.
     A malformed env var falls through to the config.yaml entry; a
-    malformed config entry falls through to ``""``. This means a typo
-    in one surface doesn't prevent the other from working.
+    malformed config entry falls through to the platform inference (or
+    ``""``). This means a typo in one surface doesn't prevent the other
+    from working.
     """
     env_raw = os.environ.get("HERMES_DASHBOARD_PUBLIC_URL", "")
     env_clean = _normalise_public_url(env_raw)
@@ -227,6 +250,7 @@ def resolve_public_url() -> str:
     _warn_if_malformed("HERMES_DASHBOARD_PUBLIC_URL env var", env_raw)
     cfg_raw = str(_load_dashboard_section().get("public_url", ""))
     cfg_clean = _normalise_public_url(cfg_raw)
-    if not cfg_clean:
-        _warn_if_malformed("dashboard.public_url in config.yaml", cfg_raw)
-    return cfg_clean
+    if cfg_clean:
+        return cfg_clean
+    _warn_if_malformed("dashboard.public_url in config.yaml", cfg_raw)
+    return _platform_inferred_public_url()

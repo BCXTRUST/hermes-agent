@@ -1695,7 +1695,8 @@ DEFAULT_CONFIG = {
         # reliably forward
         # ``X-Forwarded-Host`` / ``X-Forwarded-Proto`` / ``X-Forwarded-Prefix``
         # (manual nginx setups, on-prem ingresses, custom-domain Fly
-        # deploys without proper proxy headers). When set,
+        # deploys without proper proxy headers). Railway deploys infer
+        # this from ``RAILWAY_PUBLIC_DOMAIN`` when unset. When set,
         # ``X-Forwarded-Prefix`` is IGNORED on the OAuth path because
         # the operator has declared the public URL — we no longer need
         # to guess from proxy headers, and stacking the prefix on top
