@@ -19,11 +19,16 @@
 
 set -eu
 
+# uv/venv activate references $OSTYPE; dash + `set -u` aborts there.
+OSTYPE="${OSTYPE:-linux-gnu}"
+export OSTYPE
 if [ -f /opt/hermes/.venv/bin/activate ]; then
+    set +u
     # shellcheck disable=SC1091
     . /opt/hermes/.venv/bin/activate
+    set -u
 fi
-export PATH="/opt/hermes/bin:/opt/hermes/.venv/bin:${PATH:-/usr/bin:/bin}"
+export PATH="/opt/hermes/.venv/bin:/opt/hermes/bin:${PATH:-/usr/bin:/bin}"
 
 HERMES_HOME="${HERMES_HOME:-/opt/data}"
 export HERMES_HOME
@@ -86,6 +91,13 @@ rand_hex() {
     echo
 }
 
+# The hermes exec shim drops root → UID 10000. Files we seed on the volume
+# as root must be readable by that user or load_hermes_dotenv PermissionErrors.
+if [ "$(id -u)" = 0 ]; then
+    chown hermes:hermes "$HERMES_HOME" 2>/dev/null || true
+    chown -R hermes:hermes "$HERMES_HOME/logs" 2>/dev/null || true
+fi
+
 # Public bind requires a DashboardAuthProvider. Prefer operator-supplied
 # Railway variables; otherwise mint a password once onto the volume.
 _auth_user="${HERMES_DASHBOARD_BASIC_AUTH_USERNAME:-}"
@@ -116,14 +128,27 @@ if [ -z "${HERMES_DASHBOARD_BASIC_AUTH_SECRET:-}" ] && [ -z "$_auth_oauth" ] && 
     upsert_env HERMES_DASHBOARD_BASIC_AUTH_SECRET "$_auth_secret"
 fi
 
+if [ "$(id -u)" = 0 ]; then
+    if [ -f "$HERMES_HOME/.env" ]; then
+        chown hermes:hermes "$HERMES_HOME/.env" 2>/dev/null || true
+        chmod 600 "$HERMES_HOME/.env" 2>/dev/null || true
+    fi
+fi
+
+run_hermes() {
+    if [ "$(id -u)" = 0 ] && command -v s6-setuidgid >/dev/null 2>&1; then
+        s6-setuidgid hermes /opt/hermes/.venv/bin/hermes "$@"
+    else
+        /opt/hermes/.venv/bin/hermes "$@"
+    fi
+}
+
 # Messaging gateway (Telegram / Discord / …) is a separate process from
 # the dashboard. Cron ticks use a file lock, so running both is safe.
 _gateway_pid=""
-if command -v hermes >/dev/null 2>&1; then
-    echo "[railway] starting messaging gateway"
-    hermes gateway run >>"$HERMES_HOME/logs/gateway.railway.log" 2>&1 &
-    _gateway_pid=$!
-fi
+echo "[railway] starting messaging gateway"
+run_hermes gateway run >>"$HERMES_HOME/logs/gateway.railway.log" 2>&1 &
+_gateway_pid=$!
 
 _cleanup() {
     if [ -n "${_gateway_pid}" ]; then
@@ -133,7 +158,14 @@ _cleanup() {
 trap _cleanup EXIT INT TERM
 
 echo "[railway] starting dashboard on ${HERMES_DASHBOARD_HOST}:${dash_port}"
-exec hermes dashboard \
+if [ "$(id -u)" = 0 ] && command -v s6-setuidgid >/dev/null 2>&1; then
+    exec s6-setuidgid hermes /opt/hermes/.venv/bin/hermes dashboard \
+        --host "$HERMES_DASHBOARD_HOST" \
+        --port "$dash_port" \
+        --no-open \
+        --skip-build
+fi
+exec /opt/hermes/.venv/bin/hermes dashboard \
     --host "$HERMES_DASHBOARD_HOST" \
     --port "$dash_port" \
     --no-open \
