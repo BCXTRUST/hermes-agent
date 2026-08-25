@@ -420,7 +420,10 @@ COPY --chmod=0755 docker/railway-start.sh /opt/hermes/docker/railway-start.sh
 # every other consumer.
 ENV PATH="/opt/hermes/bin:/opt/hermes/.venv/bin:/opt/data/.local/bin:${PATH}"
 RUN mkdir -p /opt/data
-VOLUME [ "/opt/data" ]
+# Do not declare `VOLUME ["/opt/data"]`. Railway rejects Dockerfile VOLUME
+# instructions ("use Railway Volumes"). Local compose / `docker run -v`
+# bind-mounts still work without the instruction; hosted deploys attach a
+# platform volume at /opt/data instead.
 
 # The image ENTRYPOINT is a tiny dispatcher rather than `/init` directly.
 # When the image really owns PID 1 (normal Docker / Podman), the dispatcher
