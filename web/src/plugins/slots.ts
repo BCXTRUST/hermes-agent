@@ -57,6 +57,8 @@ import React, { Fragment, useEffect, useState } from "react";
  *  - `docs:bottom`      — bottom of /docs page
  *  - `chat:top`         — top of /chat page (above the composer, when embedded chat is on)
  *  - `chat:bottom`      — bottom of /chat page
+ *  - `bots:top`         — top of /bots page
+ *  - `bots:bottom`      — bottom of /bots page
  */
 export const KNOWN_SLOT_NAMES = [
   // Shell-wide
@@ -91,6 +93,8 @@ export const KNOWN_SLOT_NAMES = [
   "docs:bottom",
   "chat:top",
   "chat:bottom",
+  "bots:top",
+  "bots:bottom",
 ] as const;
 
 export type KnownSlotName = (typeof KNOWN_SLOT_NAMES)[number];

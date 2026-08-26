@@ -24,6 +24,7 @@ import {
   Activity,
   BarChart3,
   BookOpen,
+  Bot,
   Clock,
   Code,
   Cpu,
@@ -87,6 +88,7 @@ const AnalyticsPage = lazy(() => import("@/pages/AnalyticsPage"));
 const ModelsPage = lazy(() => import("@/pages/ModelsPage"));
 const CronPage = lazy(() => import("@/pages/CronPage"));
 const ProfilesPage = lazy(() => import("@/pages/ProfilesPage"));
+const BotsPage = lazy(() => import("@/pages/BotsPage"));
 const ProfileBuilderPage = lazy(() => import("@/pages/ProfileBuilderPage"));
 const SkillsPage = lazy(() => import("@/pages/SkillsPage"));
 const PluginsPage = lazy(() => import("@/pages/PluginsPage"));
@@ -168,6 +170,7 @@ const BUILTIN_ROUTES_CORE: Record<string, ComponentType> = {
   "/channels": ChannelsPage,
   "/webhooks": WebhooksPage,
   "/system": SystemPage,
+  "/bots": BotsPage,
   "/profiles": ProfilesPage,
   "/profiles/new": ProfileBuilderPage,
   "/config": ConfigPage,
@@ -190,6 +193,7 @@ const BUILTIN_NAV_REST: NavItem[] = [
     label: "Sessions",
     icon: MessageSquare,
   },
+  { path: "/bots", label: "Bots", icon: Bot },
   { path: "/files", label: "Files", icon: FolderOpen },
   {
     path: "/analytics",
@@ -226,6 +230,7 @@ const BUILTIN_NAV_REST: NavItem[] = [
 const ICON_MAP: Record<string, ComponentType<{ className?: string }>> = {
   Activity,
   BarChart3,
+  Bot,
   Clock,
   Cpu,
   FileText,

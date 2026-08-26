@@ -3806,7 +3806,7 @@ OPTIONAL_ENV_VARS = {
         "password": True,
         "tools": ["vision_analyze"],
         "category": "provider",
-        "advanced": True,
+        "advanced": False,
     },
     "GOOGLE_API_KEY": {
         "description": "Google AI Studio API key (also recognized as GEMINI_API_KEY)",

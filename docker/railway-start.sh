@@ -163,6 +163,18 @@ if [ -z "$_auth_oauth" ] && [ -z "$_auth_oidc" ]; then
     write_env HERMES_DASHBOARD_BASIC_AUTH_SECRET "$_auth_secret"
 fi
 
+# Inference keys from Railway Variables must match $HERMES_HOME/.env.
+# load_hermes_dotenv() loads that file with override=True.
+if [ -n "${OPENROUTER_API_KEY:-}" ]; then
+    write_env OPENROUTER_API_KEY "$OPENROUTER_API_KEY"
+fi
+if [ -n "${OPENAI_API_KEY:-}" ]; then
+    write_env OPENAI_API_KEY "$OPENAI_API_KEY"
+fi
+if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+    write_env ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
+fi
+
 if [ "$(id -u)" = 0 ]; then
     if [ -f "$HERMES_HOME/.env" ]; then
         chown hermes:hermes "$HERMES_HOME/.env" 2>/dev/null || true
