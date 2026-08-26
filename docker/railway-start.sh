@@ -65,18 +65,26 @@ if [ -z "${HERMES_DASHBOARD_PUBLIC_URL:-}" ]; then
     fi
 fi
 
-upsert_env() {
+# Volume .env is loaded later with override=True (load_hermes_dotenv).
+# Whatever we export here is discarded unless the same value is written
+# to $HERMES_HOME/.env — printing a freshly generated password that was
+# skipped by a "key already exists" upsert is how login 401s happen.
+envfile_get() {
+    _key=$1
+    _file="$HERMES_HOME/.env"
+    [ -f "$_file" ] || return 0
+    grep "^${_key}=" "$_file" 2>/dev/null | tail -n 1 | sed "s/^${_key}=//" | tr -d '\r'
+}
+
+write_env() {
     _key=$1
     _val=$2
     _file="$HERMES_HOME/.env"
     if [ ! -f "$_file" ]; then
         (umask 077 && touch "$_file") || return 0
     fi
-    if grep -q "^${_key}=$" "$_file" 2>/dev/null; then
-        sed -i "/^${_key}=$/d" "$_file" 2>/dev/null || true
-    fi
     if grep -q "^${_key}=" "$_file" 2>/dev/null; then
-        return 0
+        grep -v "^${_key}=" "$_file" > "${_file}.tmp" && mv "${_file}.tmp" "$_file"
     fi
     printf '%s=%s\n' "$_key" "$_val" >> "$_file" || true
 }
@@ -99,33 +107,60 @@ if [ "$(id -u)" = 0 ]; then
 fi
 
 # Public bind requires a DashboardAuthProvider. Prefer operator-supplied
-# Railway variables; otherwise mint a password once onto the volume.
+# Railway variables; otherwise reuse (or mint once) credentials on the volume.
+# Always write the chosen values back to .env so dotenv override cannot
+# swap in a stale password that was never printed.
 _auth_user="${HERMES_DASHBOARD_BASIC_AUTH_USERNAME:-}"
 _auth_pass="${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD:-}"
+_auth_secret="${HERMES_DASHBOARD_BASIC_AUTH_SECRET:-}"
 _auth_oauth="${HERMES_DASHBOARD_OAUTH_CLIENT_ID:-}"
 _auth_oidc="${HERMES_DASHBOARD_OIDC_CLIENT_ID:-}"
+_auth_pass_source="env"
 
 if [ -z "$_auth_oauth" ] && [ -z "$_auth_oidc" ]; then
     if [ -z "$_auth_user" ]; then
+        _auth_user="$(envfile_get HERMES_DASHBOARD_BASIC_AUTH_USERNAME)"
+    fi
+    if [ -z "$_auth_user" ]; then
         _auth_user="admin"
-        export HERMES_DASHBOARD_BASIC_AUTH_USERNAME="$_auth_user"
-        upsert_env HERMES_DASHBOARD_BASIC_AUTH_USERNAME "$_auth_user"
+    fi
+    export HERMES_DASHBOARD_BASIC_AUTH_USERNAME="$_auth_user"
+    write_env HERMES_DASHBOARD_BASIC_AUTH_USERNAME "$_auth_user"
+
+    if [ -z "$_auth_pass" ]; then
+        _auth_pass="$(envfile_get HERMES_DASHBOARD_BASIC_AUTH_PASSWORD)"
+        if [ -n "$_auth_pass" ]; then
+            _auth_pass_source="envfile"
+        fi
     fi
     if [ -z "$_auth_pass" ]; then
         _auth_pass="$(rand_hex 16)"
-        export HERMES_DASHBOARD_BASIC_AUTH_PASSWORD="$_auth_pass"
-        upsert_env HERMES_DASHBOARD_BASIC_AUTH_PASSWORD "$_auth_pass"
-        echo "[railway] Generated dashboard login (persisted under ${HERMES_HOME}/.env)."
-        echo "[railway] Username: ${_auth_user}"
+        _auth_pass_source="generated"
+    fi
+    export HERMES_DASHBOARD_BASIC_AUTH_PASSWORD="$_auth_pass"
+    write_env HERMES_DASHBOARD_BASIC_AUTH_PASSWORD "$_auth_pass"
+
+    echo "[railway] Dashboard login username: ${_auth_user}"
+    if [ "$_auth_pass_source" = "generated" ]; then
+        echo "[railway] Generated dashboard password (persisted under ${HERMES_HOME}/.env)."
         echo "[railway] Password: ${_auth_pass}"
         echo "[railway] Set HERMES_DASHBOARD_BASIC_AUTH_USERNAME / _PASSWORD in Railway variables to choose your own."
+    elif [ "$_auth_pass_source" = "envfile" ]; then
+        echo "[railway] Reusing dashboard password from ${HERMES_HOME}/.env (not regenerated)."
+    else
+        echo "[railway] Using dashboard password from the environment; synced to ${HERMES_HOME}/.env."
     fi
 fi
 
-if [ -z "${HERMES_DASHBOARD_BASIC_AUTH_SECRET:-}" ] && [ -z "$_auth_oauth" ] && [ -z "$_auth_oidc" ]; then
-    _auth_secret="$(rand_hex 32)"
+if [ -z "$_auth_oauth" ] && [ -z "$_auth_oidc" ]; then
+    if [ -z "$_auth_secret" ]; then
+        _auth_secret="$(envfile_get HERMES_DASHBOARD_BASIC_AUTH_SECRET)"
+    fi
+    if [ -z "$_auth_secret" ]; then
+        _auth_secret="$(rand_hex 32)"
+    fi
     export HERMES_DASHBOARD_BASIC_AUTH_SECRET="$_auth_secret"
-    upsert_env HERMES_DASHBOARD_BASIC_AUTH_SECRET "$_auth_secret"
+    write_env HERMES_DASHBOARD_BASIC_AUTH_SECRET "$_auth_secret"
 fi
 
 if [ "$(id -u)" = 0 ]; then
