@@ -6232,6 +6232,12 @@ def run_conversation(
                             agent._vprint(f"{agent.log_prefix}      • Does your account have access to {_model}?", force=True)
                             if base_url_host_matches(str(_base), "openrouter.ai"):
                                 agent._vprint(f"{agent.log_prefix}      • Check credits: https://openrouter.ai/settings/credits", force=True)
+                                if "user not found" in str(_nonretryable_summary).lower():
+                                    agent._vprint(
+                                        f"{agent.log_prefix}      • HTTP 401 User not found usually means a Management/provisioning "
+                                        "key was used for chat. Use a user key from https://openrouter.ai/keys",
+                                        force=True,
+                                    )
                     else:
                         agent._vprint(f"{agent.log_prefix}   💡 This type of error won't be fixed by retrying.", force=True)
                     # Content-policy blocks deserve their own actionable

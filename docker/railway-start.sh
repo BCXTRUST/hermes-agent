@@ -168,9 +168,15 @@ fi
 
 # Inference keys from Railway Variables must match $HERMES_HOME/.env.
 # load_hermes_dotenv() loads that file with override=True.
+if [ -n "${OPENROUTER_PROVISIONING_KEY:-}" ]; then
+    write_env OPENROUTER_PROVISIONING_KEY "$OPENROUTER_PROVISIONING_KEY"
+fi
 if [ -n "${OPENROUTER_API_KEY:-}" ]; then
     write_env OPENROUTER_API_KEY "$OPENROUTER_API_KEY"
 fi
+# Management keys pass GET /api/v1/key but chat returns HTTP 401 User not found.
+/opt/hermes/.venv/bin/python -m hermes_cli.openrouter_key || \
+    echo "[railway] warning: could not normalize OpenRouter inference key" >&2
 if [ -n "${OPENAI_API_KEY:-}" ]; then
     write_env OPENAI_API_KEY "$OPENAI_API_KEY"
 fi

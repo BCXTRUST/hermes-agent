@@ -8248,7 +8248,12 @@ async def set_env_var(body: EnvVarUpdate, profile: Optional[str] = None):
             # keeps authenticating with the old key (#62269).
             from hermes_cli.credential_lifecycle import save_provider_env_credential
 
-            return save_provider_env_credential(body.key, body.value)
+            result = save_provider_env_credential(body.key, body.value)
+            if body.key in {"OPENROUTER_API_KEY", "OPENROUTER_PROVISIONING_KEY"}:
+                from hermes_cli.openrouter_key import ensure_openrouter_inference_in_env
+
+                ensure_openrouter_inference_in_env(get_env_path())
+            return result
 
     try:
         return await asyncio.to_thread(_run)
@@ -8712,6 +8717,25 @@ async def validate_provider_credential(body: EnvVarUpdate, request: Request):
 
     if resp.status_code in (401, 403):
         return {"ok": False, "reachable": True, "message": "That API key was rejected. Double-check it and try again."}
+    if key == "OPENROUTER_API_KEY" and resp.is_success:
+        try:
+            payload = resp.json()
+            data = payload.get("data") if isinstance(payload, dict) else None
+            if isinstance(data, dict) and (
+                data.get("is_provisioning_key") or data.get("is_management_key")
+            ):
+                return {
+                    "ok": False,
+                    "reachable": True,
+                    "message": (
+                        "That is an OpenRouter Management key. Chat returns "
+                        "HTTP 401 User not found. Create a user API key at "
+                        "https://openrouter.ai/keys (or keep the management key "
+                        "and Hermes will mint a chat key on boot)."
+                    ),
+                }
+        except Exception:
+            pass
     if resp.status_code == 429 or resp.is_success:
         # 429 = key is valid but rate-limited; success = valid.
         return {"ok": True, "reachable": True, "message": ""}

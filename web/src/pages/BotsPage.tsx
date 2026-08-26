@@ -89,7 +89,8 @@ export default function BotsPage() {
             then open the <strong>Bots</strong> tab next to Sessions.
           </p>
           <p className="text-sm text-muted-foreground">
-            To make chat work, paste your OpenRouter key on{" "}
+            To make chat work, paste a <strong>user</strong> OpenRouter API
+            key on{" "}
             <button
               type="button"
               className="underline underline-offset-2"
@@ -97,10 +98,20 @@ export default function BotsPage() {
             >
               Keys
             </button>{" "}
-            under <strong>OpenRouter</strong> (
+            (
             <code className="font-mono text-xs">OPENROUTER_API_KEY</code>
-            ), or set that same variable on the Railway service. Then pick a
-            model on the Models page.
+            ). A Management/provisioning key authenticates the Keys page but
+            chat fails with <code className="font-mono text-xs">HTTP 401: User not found.</code>
+            Create a user key at{" "}
+            <a
+              href="https://openrouter.ai/keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2"
+            >
+              openrouter.ai/keys
+            </a>
+            .
           </p>
           <div className="flex flex-wrap gap-2">
             <Button

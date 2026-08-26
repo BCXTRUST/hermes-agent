@@ -3800,13 +3800,21 @@ OPTIONAL_ENV_VARS = {
         "advanced": True,
     },
     "OPENROUTER_API_KEY": {
-        "description": "OpenRouter API key (for vision, web scraping helpers, and MoA)",
+        "description": "OpenRouter user API key for chat (not a Management/provisioning key)",
         "prompt": "OpenRouter API key",
         "url": "https://openrouter.ai/keys",
         "password": True,
         "tools": ["vision_analyze"],
         "category": "provider",
         "advanced": False,
+    },
+    "OPENROUTER_PROVISIONING_KEY": {
+        "description": "OpenRouter Management API key (optional; used only to mint a chat key)",
+        "prompt": "OpenRouter management key (optional)",
+        "url": "https://openrouter.ai/settings/management-keys",
+        "password": True,
+        "category": "provider",
+        "advanced": True,
     },
     "GOOGLE_API_KEY": {
         "description": "Google AI Studio API key (also recognized as GEMINI_API_KEY)",

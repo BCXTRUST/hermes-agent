@@ -116,6 +116,7 @@ describe("BotsPage", () => {
     expect(container.textContent).toMatch(/default/);
     expect(container.textContent).toMatch(/researcher/);
     expect(container.textContent).toMatch(/OPENROUTER_API_KEY/);
+    expect(container.textContent).toMatch(/User not found/);
     expect(container.textContent).toMatch(/Chat/);
   });
 });
