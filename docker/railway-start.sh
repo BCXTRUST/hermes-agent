@@ -102,11 +102,11 @@ rand_hex() {
     echo
 }
 
-# The hermes exec shim drops root → UID 10000. Files we seed on the volume
-# as root must be readable by that user or load_hermes_dotenv PermissionErrors.
+# The hermes exec shim drops root → UID 10000. Earlier Railway boots ran as
+# root and left auth.json / hooks / session DBs root-owned; a directory-only
+# chown does not fix those files.
 if [ "$(id -u)" = 0 ]; then
-    chown hermes:hermes "$HERMES_HOME" 2>/dev/null || true
-    chown -R hermes:hermes "$HERMES_HOME/logs" 2>/dev/null || true
+    chown -R hermes:hermes "$HERMES_HOME" 2>/dev/null || true
 fi
 
 # Public bind requires a DashboardAuthProvider. Prefer operator-supplied
