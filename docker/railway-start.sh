@@ -174,11 +174,41 @@ fi
 if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
     write_env ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
 fi
+# Remote computer for bots. Local terminal is the laptop default; on Railway
+# the replica is not a useful sandbox. Daytona is the hosted computer.
+if [ -z "${DAYTONA_API_KEY:-}" ]; then
+    _daytona_key="$(envfile_get DAYTONA_API_KEY)"
+    if [ -n "$_daytona_key" ]; then
+        DAYTONA_API_KEY="$_daytona_key"
+        export DAYTONA_API_KEY
+    fi
+fi
+if [ -z "${DAYTONA_API_URL:-}" ]; then
+    _daytona_url="$(envfile_get DAYTONA_API_URL)"
+    if [ -n "$_daytona_url" ]; then
+        DAYTONA_API_URL="$_daytona_url"
+        export DAYTONA_API_URL
+    fi
+fi
+if [ -n "${DAYTONA_API_KEY:-}" ]; then
+    write_env DAYTONA_API_KEY "$DAYTONA_API_KEY"
+fi
+if [ -n "${DAYTONA_API_URL:-}" ]; then
+    write_env DAYTONA_API_URL "$DAYTONA_API_URL"
+fi
+
+if [ -n "${DAYTONA_API_KEY:-}" ]; then
+    /opt/hermes/.venv/bin/python -m hermes_cli.railway_online || \
+        echo "[railway] warning: could not merge terminal.backend=daytona into config.yaml" >&2
+fi
 
 if [ "$(id -u)" = 0 ]; then
     if [ -f "$HERMES_HOME/.env" ]; then
         chown hermes:hermes "$HERMES_HOME/.env" 2>/dev/null || true
         chmod 600 "$HERMES_HOME/.env" 2>/dev/null || true
+    fi
+    if [ -f "$HERMES_HOME/config.yaml" ]; then
+        chown hermes:hermes "$HERMES_HOME/config.yaml" 2>/dev/null || true
     fi
 fi
 

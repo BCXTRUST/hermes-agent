@@ -4428,6 +4428,23 @@ OPTIONAL_ENV_VARS = {
         "password": True,
         "category": "tool",
     },
+    "DAYTONA_API_KEY": {
+        "description": "Daytona API key for the remote terminal sandbox bots use as a computer",
+        "prompt": "Daytona API key",
+        "url": "https://app.daytona.io/dashboard/keys",
+        "password": True,
+        "category": "tool",
+        "tools": ["terminal"],
+        "advanced": False,
+    },
+    "DAYTONA_API_URL": {
+        "description": "Daytona API URL override (leave empty for the hosted default)",
+        "prompt": "Daytona API URL (optional)",
+        "url": None,
+        "password": False,
+        "category": "tool",
+        "advanced": True,
+    },
 
     # ── Bundled skills (opt-in: only needed if the user uses that skill) ──
     # These use category="skill" (distinct from "tool") so the sandbox
