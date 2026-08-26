@@ -28,7 +28,10 @@ if [ -f /opt/hermes/.venv/bin/activate ]; then
     . /opt/hermes/.venv/bin/activate
     set -u
 fi
-export PATH="/opt/hermes/.venv/bin:/opt/hermes/bin:${PATH:-/usr/bin:/bin}"
+# s6-overlay ships helpers under /command, which is not on PATH when
+# Railway's PID 1 skips /init. Without this, `command -v s6-setuidgid`
+# fails, the dashboard stays root, and `hermes gateway run` exits.
+export PATH="/command:/opt/hermes/.venv/bin:/opt/hermes/bin:${PATH:-/usr/bin:/bin}"
 
 HERMES_HOME="${HERMES_HOME:-/opt/data}"
 export HERMES_HOME
